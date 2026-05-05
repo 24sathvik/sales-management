@@ -1,0 +1,472 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum AdvanceMode {
+  ONLINE
+  CASH
+}
+
+enum BalanceMode {
+  ONLINE
+  CASH
+}
+
+enum PackingType {
+  WITH_PACKING
+  WITHOUT_PACKING
+}
+
+enum InvoiceStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  NEGOTIATING
+  CONVERTED
+  LOST
+}
+
+enum WIPPhase {
+  RAW_MATERIALS
+  DESIGN
+  PRINTING
+  POST_PRINTING
+  PAYMENT_PENDING
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  PARTIAL
+}
+
+enum PaymentMode {
+  ONLINE
+  CASH
+  UPI
+  BANK_TRANSFER
+}
+
+enum ExpenseCategory {
+  RENT
+  SALARY
+  ELECTRICITY
+  FUEL
+  INTERNET
+  MISC
+  OTHER
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionCategory {
+  INVOICE_ADVANCE
+  INVOICE_BALANCE
+  INVOICE_FULL_PAYMENT
+  VENDOR_PAYMENT
+  OVERHEAD
+  MISC_INCOME
+  MISC_EXPENSE
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String // hashed
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  createdInvoices  Invoice[] @relation("CreatedBy")
+  assignedInvoices Invoice[] @relation("AssignedTo")
+  createdLeads     Lead[]    @relation("LeadCreatedBy")
+  assignedLeads    Lead[]    @relation("LeadAssignedTo")
+  counterTransactions CounterTransaction[]
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  invoiceNumber Int      @unique @default(autoincrement())
+  customerName  String
+  phone         String
+  brideName     String
+  groomName     String
+  modelNumber   String
+  category      String   @default("Uncategorized")
+  description   String
+  date          DateTime @default(now())
+
+  quantity          Int
+  toleranceQuantity Int // floor(quantity * 0.95)
+  unitRate          Decimal
+  totalAmount       Decimal // quantity * unitRate
+
+  advancePaid   Boolean      @default(false)
+  advanceAmount Decimal?
+  advanceMode   AdvanceMode?
+
+  balance     Decimal?
+  balancePaid Boolean      @default(false)
+  balanceMode BalanceMode?
+
+  estimatedDesignTime String
+  estimatedPrintTime  String
+  packing             PackingType
+
+  printingColor   String?
+  designer        String?
+  printer         String?
+  additionalNotes String?
+
+  contentConfirmedOn DateTime?
+  finalDeliveryDate  DateTime?
+
+  items    Json?
+  jobSpecs Json?
+
+  assigneeId String
+  assignee   User   @relation("AssignedTo", fields: [assigneeId], references: [id])
+
+  status InvoiceStatus @default(ACTIVE)
+
+  deletedAt DateTime? // soft delete
+
+  createdById String
+  createdBy   User   @relation("CreatedBy", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wipCards           WIPCard[]
+  finalCheck         FinalCheck?
+  purchases          Purchase[]
+  counterTransaction CounterTransaction[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([finalDeliveryDate])
+  @@index([category])
+  @@index([assigneeId])
+  @@index([deletedAt])
+}
+
+model Lead {
+  id           String @id @default(uuid())
+  customerName String
+  phone        String
+  category     String
+  description  String
+  quantity     Int
+
+  assignedToId String
+  assignedTo   User   @relation("LeadAssignedTo", fields: [assignedToId], references: [id])
+
+  estimatedBillValue Decimal
+  status             LeadStatus @default(NEW)
+  notes              String?
+
+  deletedAt DateTime? // soft delete
+
+  createdById String
+  createdBy   User   @relation("LeadCreatedBy", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([assignedToId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model WIPCard {
+  id        String  @id @default(uuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  // Denormalized
+  invoiceNumber String
+  description   String
+  quantity      Int
+  customerName  String
+
+  phase WIPPhase @default(RAW_MATERIALS)
+  order Int      @default(0)
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  checklists WIPChecklist[]
+
+  @@index([phase])
+  @@index([deletedAt])
+  @@index([order])
+}
+
+model FinalCheck {
+  id        String  @id @default(uuid())
+  invoiceId String  @unique
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  // Denormalized
+  invoiceNumber String
+  description   String
+  designer      String?
+  printer       String?
+  quantity      Int
+  modelNumber   String
+
+  // Checklist boolean fields
+  // Checklist booleans removed. Now draws from WIPChecklist relational architecture.
+
+  isComplete  Boolean   @default(false)
+  completedAt DateTime?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt])
+  @@index([isComplete])
+}
+
+model InvoiceCategory {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
+model WIPChecklist {
+  id        String   @id @default(uuid())
+  wipCardId String   
+  wipCard   WIPCard  @relation(fields: [wipCardId], references: [id], onDelete: Cascade)
+  phase     WIPPhase 
+  invoiceId String   
+
+  // RAW_MATERIALS phase checks (10 items):
+  rm_billNumberVerified        Boolean @default(false)
+  rm_modelNumberVerified       Boolean @default(false)
+  rm_descriptionVerified       Boolean @default(false)
+  rm_quantityVerified          Boolean @default(false)
+  rm_printerAssigned           Boolean @default(false)
+  rm_dtpAssigned               Boolean @default(false)
+  rm_colourExplainedToCustomer Boolean @default(false)
+  rm_leadTimeExplained         Boolean @default(false)
+  rm_wastageRemarksAdjusted    Boolean @default(false)
+  rm_dtpAssignedAndStarted     Boolean @default(false)
+
+  // DESIGN phase checks (9 items):
+  d_materialCardsReceived      Boolean @default(false)
+  d_dtpConfirmed               Boolean @default(false)
+  d_cardsStockUpdated          Boolean @default(false)
+  d_currentStockChecked        Boolean @default(false)
+  d_stickersQualityChecked     Boolean @default(false)
+  d_stickerQualityUpdated      Boolean @default(false)
+  d_logoCheckedOnDtp           Boolean @default(false)
+  d_printerScheduleInformed    Boolean @default(false)
+  d_dtpSentToCustomer          Boolean @default(false)
+
+  // PRINTING phase checks (17 items):
+  p_namePlatesReceived1        Boolean @default(false)
+  p_namePlatesQualityChecked   Boolean @default(false)
+  p_dtpConfirmedByCustomer     Boolean @default(false)
+  p_namePlatesReceivedFinal    Boolean @default(false)
+  p_signaturesFromCustomer     Boolean @default(false)
+  p_leadTimeUpdated            Boolean @default(false)
+  p_leftRightExplained         Boolean @default(false)
+  p_masterTracingsReady        Boolean @default(false)
+  p_samplesCollectedFromDtp    Boolean @default(false)
+  p_masterCheckWithPdfCard     Boolean @default(false)
+  p_timeColourWrittenOnCards   Boolean @default(false)
+  p_timeColourSentInGroup      Boolean @default(false)
+  p_cardOrientationSentToGroup Boolean @default(false)
+  p_materialSentToPrinter      Boolean @default(false)
+  p_estimatedPrintingDateSet   Boolean @default(false)
+  p_printerFollowUp            Boolean @default(false)
+  p_cardOrientationConfirmed   Boolean @default(false)
+
+  // POST_PRINTING phase checks (15 items):
+  pp_paddingBoxingScheduled    Boolean @default(false)
+  pp_printedMaterialReceived   Boolean @default(false)
+  pp_printedMaterialQC         Boolean @default(false)
+  pp_cardsToBinder             Boolean @default(false)
+  pp_binderFollowUp            Boolean @default(false)
+  pp_estimatedTimeToBinder     Boolean @default(false)
+  pp_endProductCheck           Boolean @default(false)
+  pp_sampleExchanged           Boolean @default(false)
+  pp_customerInformedBag       Boolean @default(false)
+  pp_customerInformedReadiness Boolean @default(false)
+  pp_paymentCollected          Boolean @default(false)
+  pp_reminderFollowUp          Boolean @default(false)
+  pp_ratingTaken               Boolean @default(false)
+  pp_checkRatingName           Boolean @default(false)
+  pp_balanceCollected          Boolean @default(false)
+
+  // PAYMENT_PENDING phase checks (5 items):
+  pay_invoiceAmountConfirmed   Boolean @default(false)
+  pay_paymentReminderSent      Boolean @default(false)
+  pay_partialPaymentReceived   Boolean @default(false)
+  pay_fullPaymentReceived      Boolean @default(false)
+  pay_receiptIssued            Boolean @default(false)
+
+  isComplete   Boolean   @default(false)
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([wipCardId])
+  @@index([invoiceId])
+  @@index([phase])
+}
+
+model Purchase {
+  id            String   @id @default(uuid())
+  invoiceId     String   @unique
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
+
+  // Auto-populated from Invoice (denormalized for performance)
+  invoiceNumber String
+  customerName  String
+  description   String
+  category      String
+  quantity      Int
+  billValue     Decimal
+
+  // Lead source
+  leadSource    String?
+
+  // Designer 1
+  designer1Name          String?
+  designer1Cost          Decimal?      @default(0)
+  designer1PaymentStatus PaymentStatus @default(PENDING)
+  designer1PaymentMode   PaymentMode?
+
+  // Designer 2
+  designer2Name          String?
+  designer2Cost          Decimal?      @default(0)
+  designer2PaymentStatus PaymentStatus @default(PENDING)
+  designer2PaymentMode   PaymentMode?
+
+  // Printer 1
+  printer1Name          String?
+  printer1Cost          Decimal?      @default(0)
+  printer1PaymentStatus PaymentStatus @default(PENDING)
+  printer1PaymentMode   PaymentMode?
+
+  // Printer 2
+  printer2Name          String?
+  printer2Cost          Decimal?      @default(0)
+  printer2PaymentStatus PaymentStatus @default(PENDING)
+  printer2PaymentMode   PaymentMode?
+
+  // Raw Materials 1
+  rawMaterial1Name          String?
+  rawMaterial1Cost          Decimal?      @default(0)
+  rawMaterial1PaymentStatus PaymentStatus @default(PENDING)
+  rawMaterial1PaymentMode   PaymentMode?
+
+  // Raw Materials 2
+  rawMaterial2Name          String?
+  rawMaterial2Cost          Decimal?      @default(0)
+  rawMaterial2PaymentStatus PaymentStatus @default(PENDING)
+  rawMaterial2PaymentMode   PaymentMode?
+
+  // Post Processing 1
+  postProcess1Name          String?
+  postProcess1Cost          Decimal?      @default(0)
+  postProcess1PaymentStatus PaymentStatus @default(PENDING)
+  postProcess1PaymentMode   PaymentMode?
+
+  // Post Processing 2
+  postProcess2Name          String?
+  postProcess2Cost          Decimal?      @default(0)
+  postProcess2PaymentStatus PaymentStatus @default(PENDING)
+  postProcess2PaymentMode   PaymentMode?
+
+  // Computed & stored fields
+  totalDesignerCost     Decimal @default(0)
+  totalPrinterCost      Decimal @default(0)
+  totalRawMaterialCost  Decimal @default(0)
+  totalPostProcessCost  Decimal @default(0)
+  totalProductionCost   Decimal @default(0)
+  profit                Decimal @default(0)
+  profitPercentage      Decimal @default(0)
+
+  notes       String?
+  deletedAt   DateTime?
+  completedAt DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([completedAt])
+  @@index([category])
+  @@index([invoiceId])
+  @@index([deletedAt])
+  @@index([leadSource])
+}
+
+model MonthlyExpense {
+  id          String          @id @default(uuid())
+  month       Int             // 1-12
+  year        Int
+  category    ExpenseCategory
+  amount      Decimal
+  description String?
+  paidOn      DateTime?
+  paymentMode PaymentMode?
+  createdBy   String
+  deletedAt   DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([year, month])
+  @@index([category])
+  @@index([deletedAt])
+}
+
+model CounterTransaction {
+  id             String              @id @default(uuid())
+  date           DateTime            @default(now())
+  type           TransactionType
+  mode           PaymentMode
+  amount         Decimal
+  description    String
+  invoiceId      String?
+  invoiceNumber  String?
+  category       TransactionCategory
+  runningBalance Decimal
+  createdBy      String
+  deletedAt      DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  invoice        Invoice?            @relation(fields: [invoiceId], references: [id])
+  user           User                @relation(fields: [createdBy], references: [id])
+
+  @@index([date])
+  @@index([mode])
+  @@index([type])
+  @@index([category])
+  @@index([deletedAt])
+  @@index([createdAt])
+}
