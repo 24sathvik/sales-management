@@ -141,8 +141,6 @@ model Invoice {
   contentConfirmedOn DateTime?
   finalDeliveryDate  DateTime?
 
-  items    Json?
-  jobSpecs Json?
 
   assigneeId String
   assignee   User   @relation("AssignedTo", fields: [assigneeId], references: [id])
