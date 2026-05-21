@@ -28,6 +28,16 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "ZyOps",
   description: "Generic operations management platform by ZyOps",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "ZyOps",
+  },
+};
+
+export const viewport = {
+  themeColor: "#FAFAF2",
 };
 
 export default function RootLayout({
