@@ -348,7 +348,8 @@ export function InvoiceForm({ initialData, invoiceId }: {
             </div>
           </div>
           
-          <div className="overflow-x-auto">
+          {/* ── Desktop Table (md and up) ─────────────────────────────────────── */}
+          <div className="hidden md:block">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 border-b">
                 <tr>
@@ -366,7 +367,7 @@ export function InvoiceForm({ initialData, invoiceId }: {
                 {items.map((item, index) => (
                   <tr key={item.id} className="hover:bg-slate-50/50">
                     <td className="px-4 py-2 text-center font-medium">{index + 1}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-2 min-w-[200px]">
                       <textarea
                         value={item.description}
                         onChange={(e) => updateItem(item.id, "description", e.target.value)}
@@ -398,6 +399,63 @@ export function InvoiceForm({ initialData, invoiceId }: {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* ── Mobile Card Stack (below md) ──────────────────────────────────── */}
+          <div className="block md:hidden divide-y">
+            {items.map((item, index) => (
+              <div key={item.id} className="p-4 space-y-3 bg-white">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Item #{index + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(item.id)}
+                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase">Description</label>
+                  <textarea
+                    value={item.description}
+                    onChange={(e) => updateItem(item.id, "description", e.target.value)}
+                    className="w-full px-3 py-2 border rounded-md text-sm outline-none resize-none"
+                    rows={3}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold uppercase">HSN Code</label>
+                    <input type="text" value={item.hsn} onChange={(e) => updateItem(item.id, "hsn", e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm outline-none" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold uppercase">Quantity</label>
+                    <input type="number" min="0" step="0.01" value={item.qty === 0 ? "" : item.qty} onChange={(e) => updateItem(item.id, "qty", parseFloat(e.target.value) || 0)} className="w-full px-3 py-2 border rounded-md text-sm outline-none" />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold uppercase">Rate (₹)</label>
+                    <input type="number" min="0" step="0.01" value={item.rate === 0 ? "" : item.rate} onChange={(e) => updateItem(item.id, "rate", parseFloat(e.target.value) || 0)} className="w-full px-3 py-2 border rounded-md text-sm outline-none" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold uppercase">Per</label>
+                    <input type="text" value={item.uom} onChange={(e) => updateItem(item.id, "uom", e.target.value)} className="w-full px-3 py-2 border rounded-md text-sm outline-none" />
+                  </div>
+                </div>
+                
+                <div className="pt-2 flex justify-between items-center border-t">
+                  <label className="text-xs font-semibold uppercase">Amount</label>
+                  <div className="font-semibold text-brand-forest">
+                    ₹{(item.qty * item.rate).toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
           <div className="p-3 border-t bg-slate-50 flex justify-between items-center">
             <button type="button" onClick={handleAddItem} className="inline-flex items-center text-sm font-semibold text-brand-forest hover:opacity-80">
