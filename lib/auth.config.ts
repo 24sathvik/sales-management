@@ -24,8 +24,8 @@ export const authConfig = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 8 * 60 * 60, // 8 hours
-    updateAge: 60 * 60,  // refresh every 1 hour
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60,  // refresh every 24 hours
   },
 } satisfies NextAuthConfig;
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Syne, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { Providers } from "@/components/providers";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({ 
@@ -71,6 +72,7 @@ export default function RootLayout({
             }}
           />
         </Providers>
+        <PwaInstallPrompt />
       </body>
     </html>
   );
