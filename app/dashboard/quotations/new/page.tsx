@@ -236,65 +236,67 @@ export default function NewQuotationPage() {
             </div>
             
             <div className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm whitespace-nowrap">
+
+              {/* ── Desktop Table (md and up) ─────────────────────────────────────── */}
+              <div className="hidden md:block">
+                <table className="w-full text-left text-sm">
                   <thead className="bg-slate-50 text-text-secondary border-b border-card-border">
                     <tr>
-                      <th className="px-4 py-3 font-semibold w-12 text-center">#</th>
-                      <th className="px-4 py-3 font-semibold w-[40%]">Item Description</th>
-                      <th className="px-4 py-3 font-semibold w-24">Display Qty</th>
-                      <th className="px-4 py-3 font-semibold w-24">Calc Qty</th>
-                      <th className="px-4 py-3 font-semibold w-28">Unit Price (₹)</th>
-                      <th className="px-4 py-3 font-semibold w-32 text-right">Total</th>
-                      <th className="px-4 py-3 font-semibold w-12"></th>
+                      <th className="px-3 py-3 font-semibold w-10 text-center">#</th>
+                      <th className="px-3 py-3 font-semibold">Item Description</th>
+                      <th className="px-3 py-3 font-semibold w-28">UOM / Display</th>
+                      <th className="px-3 py-3 font-semibold w-24">Quantity</th>
+                      <th className="px-3 py-3 font-semibold w-28">Unit Price (₹)</th>
+                      <th className="px-3 py-3 font-semibold w-28 text-right">Total (₹)</th>
+                      <th className="px-3 py-3 w-10"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-card-border">
                     {items.map((item, index) => (
                       <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-4 py-3 text-center text-text-secondary font-medium">{index + 1}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3 text-center text-text-secondary font-medium">{index + 1}</td>
+                        <td className="px-3 py-3 min-w-[200px]">
                           <textarea
                             value={item.description}
                             onChange={(e) => updateItem(item.id, "description", e.target.value)}
-                            className="w-full px-2 py-1.5 border border-transparent hover:border-card-border focus:border-accent rounded-md outline-none bg-transparent resize-none"
-                            placeholder="Lead Sheet 2mm&#10;Total Weight: 1175Kgs (500S.ft)"
+                            className="w-full px-2 py-1.5 border border-card-border hover:border-accent focus:border-accent rounded-md outline-none bg-transparent resize-none text-sm"
+                            placeholder="e.g. Lead Sheet 2mm, Total Weight: 1175 Kgs"
                             rows={2}
                           />
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3">
                           <input
                             type="text"
                             value={item.uom}
                             onChange={(e) => updateItem(item.id, "uom", e.target.value)}
-                            className="w-full px-2 py-1.5 border border-transparent hover:border-card-border focus:border-accent rounded-md outline-none bg-transparent"
+                            className="w-full px-2 py-1.5 border border-card-border hover:border-accent focus:border-accent rounded-md outline-none bg-transparent text-sm"
                             placeholder="Per kg"
                           />
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3">
                           <input
                             type="number"
                             min="0.01"
                             step="0.01"
                             value={item.qty === 0 ? "" : item.qty}
                             onChange={(e) => updateItem(item.id, "qty", parseFloat(e.target.value) || 0)}
-                            className="w-full px-2 py-1.5 border border-transparent hover:border-card-border focus:border-accent rounded-md outline-none bg-transparent"
+                            className="w-full px-2 py-1.5 border border-card-border hover:border-accent focus:border-accent rounded-md outline-none bg-transparent text-sm"
                           />
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3">
                           <input
                             type="number"
                             min="0"
                             step="0.01"
                             value={item.unit_price === 0 ? "" : item.unit_price}
                             onChange={(e) => updateItem(item.id, "unit_price", parseFloat(e.target.value) || 0)}
-                            className="w-full px-2 py-1.5 border border-transparent hover:border-card-border focus:border-accent rounded-md outline-none bg-transparent"
+                            className="w-full px-2 py-1.5 border border-card-border hover:border-accent focus:border-accent rounded-md outline-none bg-transparent text-sm"
                           />
                         </td>
-                        <td className="px-4 py-3 text-right font-medium text-primary">
-                          {(item.qty * item.unit_price).toFixed(2)}
+                        <td className="px-3 py-3 text-right font-semibold text-primary">
+                          ₹{(item.qty * item.unit_price).toFixed(2)}
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-3 py-3 text-center">
                           <button
                             onClick={() => handleRemoveItem(item.id)}
                             className="p-1.5 text-slate-400 hover:text-danger hover:bg-red-50 rounded-md transition-colors"
@@ -308,6 +310,77 @@ export default function NewQuotationPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* ── Mobile Card Stack (below md) ──────────────────────────────────── */}
+              <div className="block md:hidden divide-y divide-card-border">
+                {items.map((item, index) => (
+                  <div key={item.id} className="p-4 space-y-3 bg-white">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Item #{index + 1}</span>
+                      <button
+                        onClick={() => handleRemoveItem(item.id)}
+                        className="p-1.5 text-slate-400 hover:text-danger hover:bg-red-50 rounded-md transition-colors"
+                        title="Remove item"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Item Description</label>
+                      <textarea
+                        value={item.description}
+                        onChange={(e) => updateItem(item.id, "description", e.target.value)}
+                        className="w-full px-3 py-2 border border-card-border hover:border-accent focus:border-accent rounded-md outline-none bg-transparent resize-none text-sm"
+                        placeholder="e.g. Lead Sheet 2mm, Total Weight: 1175 Kgs"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">UOM / Display</label>
+                        <input
+                          type="text"
+                          value={item.uom}
+                          onChange={(e) => updateItem(item.id, "uom", e.target.value)}
+                          className="w-full px-3 py-2 border border-card-border hover:border-accent focus:border-accent rounded-md outline-none bg-transparent text-sm"
+                          placeholder="Per kg"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Quantity</label>
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={item.qty === 0 ? "" : item.qty}
+                          onChange={(e) => updateItem(item.id, "qty", parseFloat(e.target.value) || 0)}
+                          className="w-full px-3 py-2 border border-card-border hover:border-accent focus:border-accent rounded-md outline-none bg-transparent text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Unit Price (₹)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.unit_price === 0 ? "" : item.unit_price}
+                          onChange={(e) => updateItem(item.id, "unit_price", parseFloat(e.target.value) || 0)}
+                          className="w-full px-3 py-2 border border-card-border hover:border-accent focus:border-accent rounded-md outline-none bg-transparent text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Total (₹)</label>
+                        <div className="px-3 py-2 bg-slate-50 border border-card-border rounded-md text-sm font-semibold text-primary">
+                          ₹{(item.qty * item.unit_price).toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               <div className="p-4 border-t border-card-border bg-slate-50">
                 <button
                   onClick={handleAddItem}

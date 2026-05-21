@@ -59,27 +59,56 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       });
       const nextInvoiceNumber = (latestInv?.invoiceNumber || 0) + 1;
 
-      // Calculate total quantity from items
-      const totalQty = items.reduce((acc: number, item: any) => acc + (Number(item.qty) || 0), 0);
+      // Calculate total quantity from items — must be an Int for Prisma
+      const totalQtyRaw = items.reduce((acc: number, item: any) => acc + (Number(item.qty) || 0), 0);
+      const totalQty = Math.round(totalQtyRaw > 0 ? totalQtyRaw : 1);
+      const toleranceQty = Math.floor(totalQty * 0.95);
+
       const advancePaid = Number(quotation.advance_required) > 0;
       const advanceAmount = advancePaid ? Number(quotation.advance_required) : null;
       const balance = Number(quotation.total_amount) - (advanceAmount || 0);
+      const unitRate = totalQty > 0 ? Number(quotation.total_amount) / totalQty : Number(quotation.total_amount);
 
-      // Build Base Payload for Printers
+      // Map quotation items to the invoice PDF format (matching InvoiceForm complexData structure)
+      const invoiceItems = items.map((i: any) => ({
+        id: String(Math.random()),
+        description: i.description || "",
+        hsn: i.hsn || "",
+        qty: Number(i.qty) || 1,
+        rate: Number(i.unit_price) || 0,
+        uom: i.uom || "1 Nos",
+      }));
+
+      // Build additionalNotes as JSON payload consumed by the invoice PDF generator
+      const complexData = {
+        customerAddress: quotation.customer_address || "",
+        deliveryNote: "",
+        paymentTerms: "100% Advance Payment",
+        buyersOrderNo: "",
+        despatchDocNo: "",
+        despatchDated: "",
+        despatchedThrough: "",
+        destination: "",
+        termsOfDelivery: "",
+        gstPercent: Number(quotation.tax_percent) || 5,
+        items: invoiceItems,
+      };
+
+      // Build Base Payload for Prisma
       const createData = {
         invoiceNumber: nextInvoiceNumber,
         customerName: quotation.customer_name,
-        phone: quotation.customer_phone || "",
+        phone: quotation.customer_phone || "00000",
         brideName: "",
         groomName: "",
-        category: quotation.category || items[0]?.category || "Uncategorized",
+        category: quotation.category || "General",
         modelNumber: quotation.quotation_number || "",
         description: quotation.job_title || consolidatedDescription,
         date: new Date(),
-        quantity: totalQty > 0 ? totalQty : 1,
-        toleranceQuantity: Math.floor((totalQty > 0 ? totalQty : 1) * 0.95),
-        unitRate: totalQty > 0 ? Number(quotation.total_amount) / totalQty : quotation.total_amount,
-        totalAmount: quotation.total_amount,
+        quantity: totalQty,
+        toleranceQuantity: toleranceQty,
+        unitRate: unitRate,
+        totalAmount: Number(quotation.total_amount),
         advancePaid: advancePaid,
         advanceAmount: advanceAmount,
         advanceMode: advancePaid ? "CASH" : null,
@@ -94,7 +123,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         assigneeId: session.user.id,
         createdById: session.user.id,
         status: "ACTIVE",
-        additionalNotes: quotation.notes || "",
+        additionalNotes: JSON.stringify(complexData),
       };
 
       // Construct native Invoice object

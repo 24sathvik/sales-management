@@ -98,7 +98,7 @@ export async function generateQuotationPdf(data: any) {
       index + 1,
       item.description || "",
       item.unit_price || 0,
-      item.uom || "Per kg",
+      `${item.qty != null ? item.qty : ""} ${item.uom || "Per kg"}`.trim(),
       (item.qty * item.unit_price).toFixed(2)
     ]);
   });

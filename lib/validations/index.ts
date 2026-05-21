@@ -1,9 +1,7 @@
 import { z } from "zod";
 
 const stringMax = (max: number) => z.string().max(max, `Must be at most ${max} characters`);
-const phoneRegex = /^[6-9]\d{9}$/;
-
-export const phoneSchema = z.string().regex(phoneRegex, "Must be a valid 10-digit mobile number");
+export const phoneSchema = z.string().min(5, "Must be a valid phone number (at least 5 digits)");
 
 export const positiveDecimal = z.number().nonnegative("Amount must be non-negative");
 
